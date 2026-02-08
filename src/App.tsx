@@ -51,8 +51,12 @@ function buildConfig(template: HouseholdTemplate): HouseholdConfig {
 }
 
 export default function App() {
-  const [config, setConfig] = useState<HouseholdConfig | null>(null);
-  const [isTemplateDialogOpen, setTemplateDialogOpen] = useState(true);
+  const initialConfig = (() => {
+    const starter = householdTemplates.find((template) => template.id === "starter-flat") ?? householdTemplates[0];
+    return starter ? buildConfig(starter) : null;
+  })();
+  const [config, setConfig] = useState<HouseholdConfig | null>(initialConfig);
+  const [isTemplateDialogOpen, setTemplateDialogOpen] = useState(initialConfig === null);
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [isAddProducerDialogOpen, setAddProducerDialogOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>({
@@ -221,7 +225,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {config ? (
+      {config && (
         <Suspense fallback={<div className="empty-state"><p>Loading simulator…</p></div>}>
           <SimulatorPage
             config={config}
@@ -235,11 +239,6 @@ export default function App() {
             onOpenTemplates={() => setTemplateDialogOpen(true)}
           />
         </Suspense>
-      ) : (
-        <div className="empty-state">
-          <h2>No household selected</h2>
-          <p>Select a template to begin simulation.</p>
-        </div>
       )}
 
       <TemplatePickerPage
