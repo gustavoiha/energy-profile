@@ -1,0 +1,278 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  color: #1f2933;
+  background: radial-gradient(circle at top left, #f5efe3 0%, #f7f3ec 60%, #ffffff 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.25rem;
+}
+
+.empty-state {
+  min-height: calc(100vh - 2.5rem);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.template-card {
+  background: #fff;
+  border: 1px solid #d9d1c3;
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  border-color: #7f5539;
+}
+
+.simulator-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.sim-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1rem;
+}
+
+.sidebar,
+.main-panel {
+  background: #fff;
+  border: 1px solid #d9d1c3;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.sidebar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.75rem;
+  max-height: calc(100vh - 50px);
+}
+
+.appliance-list {
+  overflow-y: auto;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.appliance-row {
+  border: 1px solid #e8dfd4;
+  border-radius: 8px;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.appliance-row-main {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.appliance-row-main p {
+  margin: 0;
+  color: #52606d;
+}
+
+.appliance-row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-btn {
+  width: 100%;
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.secondary-btn {
+  width: 100%;
+}
+
+.danger {
+  color: #b42318;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.summary-cards article {
+  border: 1px solid #e8dfd4;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: #fdfaf5;
+}
+
+.summary-cards h4,
+.summary-cards p {
+  margin: 0;
+}
+
+.summary-cards p {
+  margin-top: 0.3rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.chart-panel {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.chart-wrap {
+  background: #fff;
+  border: 1px solid #efe5d8;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+  border-bottom: 1px solid #efe5d8;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(17 24 39 / 35%);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  border: 1px solid #d9d1c3;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.modal-card label {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.template-picker-modal {
+  width: min(820px, 100%);
+}
+
+.template-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.template-picker-header h2,
+.template-picker-header p {
+  margin: 0;
+}
+
+.template-picker-header p {
+  margin-top: 0.3rem;
+  color: #52606d;
+}
+
+.weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.weekday-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid #e8dfd4;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.modal-card input,
+.modal-card select,
+button {
+  border: 1px solid #c9bfb0;
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  background: #fff;
+}
+
+.preview {
+  margin: 0;
+  font-weight: 600;
+}
+
+.errors {
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.errors p {
+  margin: 0.2rem 0;
+  color: #b42318;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 960px) {
+  .sim-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    max-height: none;
+  }
+}
