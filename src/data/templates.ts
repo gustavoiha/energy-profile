@@ -1,14 +1,24 @@
 import type { HouseholdTemplate } from "../types/domain";
 import { appliancePresets, createApplianceFromPreset } from "./appliancePresets";
+import { createProducerFromPreset, producerPresets } from "./producerPresets";
 
-const byId = new Map(appliancePresets.map((preset) => [preset.id, preset]));
+const applianceById = new Map(appliancePresets.map((preset) => [preset.id, preset]));
+const producerById = new Map(producerPresets.map((preset) => [preset.id, preset]));
 
-function pick(id: string) {
-  const preset = byId.get(id);
+function pickAppliance(id: string) {
+  const preset = applianceById.get(id);
   if (!preset) {
-    throw new Error(`Missing preset: ${id}`);
+    throw new Error(`Missing appliance preset: ${id}`);
   }
   return createApplianceFromPreset(preset, `${id}-base`);
+}
+
+function pickProducer(id: string) {
+  const preset = producerById.get(id);
+  if (!preset) {
+    throw new Error(`Missing producer preset: ${id}`);
+  }
+  return createProducerFromPreset(preset, `${id}-base`);
 }
 
 export const householdTemplates: HouseholdTemplate[] = [
@@ -17,14 +27,24 @@ export const householdTemplates: HouseholdTemplate[] = [
     name: "Starter Flat",
     bedrooms: 1,
     occupants: 2,
-    appliances: [pick("fridge"), pick("router"), pick("tv"), pick("lighting"), pick("washing-machine")]
+    appliances: [pickAppliance("fridge"), pickAppliance("router"), pickAppliance("tv"), pickAppliance("lighting"), pickAppliance("washing-machine")],
+    producers: []
   },
   {
     id: "family-home",
     name: "Family Home",
     bedrooms: 3,
     occupants: 4,
-    appliances: [pick("fridge"), pick("router"), pick("tv"), pick("lighting"), pick("dishwasher"), pick("washing-machine"), pick("ac")]
+    appliances: [
+      pickAppliance("fridge"),
+      pickAppliance("router"),
+      pickAppliance("tv"),
+      pickAppliance("lighting"),
+      pickAppliance("dishwasher"),
+      pickAppliance("washing-machine"),
+      pickAppliance("ac")
+    ],
+    producers: [pickProducer("small-solar-panel"), pickProducer("small-battery")]
   },
   {
     id: "high-efficiency",
@@ -32,10 +52,10 @@ export const householdTemplates: HouseholdTemplate[] = [
     bedrooms: 2,
     occupants: 3,
     appliances: [
-      { ...pick("fridge"), model: { kind: "always_on", watts: 70 } },
-      pick("router"),
+      { ...pickAppliance("fridge"), model: { kind: "always_on", watts: 70 } },
+      pickAppliance("router"),
       {
-        ...pick("tv"),
+        ...pickAppliance("tv"),
         model: {
           kind: "scheduled_window",
           watts: 80,
@@ -43,9 +63,12 @@ export const householdTemplates: HouseholdTemplate[] = [
           durationMin: 180
         }
       },
-      { ...pick("lighting"), model: { kind: "count_based", count: 8, wattsEach: 7, schedule: { startMin: 18 * 60, endMin: 22 * 60 } } },
       {
-        ...pick("washing-machine"),
+        ...pickAppliance("lighting"),
+        model: { kind: "count_based", count: 8, wattsEach: 7, schedule: { startMin: 18 * 60, endMin: 22 * 60 } }
+      },
+      {
+        ...pickAppliance("washing-machine"),
         model: {
           kind: "scheduled_window",
           watts: 600,
@@ -53,6 +76,7 @@ export const householdTemplates: HouseholdTemplate[] = [
           durationMin: 70
         }
       }
-    ]
+    ],
+    producers: [pickProducer("medium-solar-panel")]
   }
 ];

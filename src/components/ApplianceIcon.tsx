@@ -1,10 +1,10 @@
-import type { ApplianceIconId } from "../types/domain";
+import type { ApplianceIconId, ProducerIconId } from "../types/domain";
 
 interface ApplianceIconProps {
-  icon: ApplianceIconId;
+  icon: ApplianceIconId | ProducerIconId;
 }
 
-const iconMap: Record<ApplianceIconId, string> = {
+const iconMap: Record<ApplianceIconId | ProducerIconId, string> = {
   fridge: "🧊",
   router: "📶",
   tv: "📺",
@@ -20,7 +20,10 @@ const iconMap: Record<ApplianceIconId, string> = {
   microwave: "📟",
   laptop: "💻",
   fan: "🌀",
-  custom: "⚙️"
+  custom: "⚙️",
+  "solar-panel": "☀️",
+  battery: "🔋",
+  "producer-custom": "⚡"
 };
 
 export function ApplianceIcon({ icon }: ApplianceIconProps) {

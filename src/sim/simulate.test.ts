@@ -99,7 +99,8 @@ describe("simulate", () => {
       appliances: [
         mkAppliance("base", { kind: "always_on", watts: 100 }),
         mkAppliance("boost", { kind: "scheduled_window", watts: 900, startMin: 0, durationMin: 60 })
-      ]
+      ],
+      producers: []
     };
 
     const result = simulate(config);

@@ -1,12 +1,13 @@
-import type { Appliance, SimulationResult } from "../types/domain";
+import type { Appliance, Producer, SimulationResult } from "../types/domain";
 
 interface BreakdownTableProps {
   appliances: Appliance[];
+  producers: Producer[];
   sim: SimulationResult;
 }
 
-export function BreakdownTable({ appliances, sim }: BreakdownTableProps) {
-  const rows = appliances
+export function BreakdownTable({ appliances, producers, sim }: BreakdownTableProps) {
+  const applianceRows = appliances
     .map((appliance) => ({
       id: appliance.id,
       name: appliance.name,
@@ -15,24 +16,54 @@ export function BreakdownTable({ appliances, sim }: BreakdownTableProps) {
     }))
     .sort((a, b) => b.dailyKwh - a.dailyKwh);
 
+  const producerRows = producers
+    .map((producer) => ({
+      id: producer.id,
+      name: producer.name,
+      quantity: producer.quantity,
+      dailyKwh: sim.perProducerDailyKwh[producer.id] ?? 0
+    }))
+    .sort((a, b) => b.dailyKwh - a.dailyKwh);
+
   return (
-    <table className="breakdown-table">
-      <thead>
-        <tr>
-          <th>Appliance</th>
-          <th>Qty</th>
-          <th>kWh/day</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.id}>
-            <td>{row.name}</td>
-            <td>{row.quantity}</td>
-            <td>{row.dailyKwh.toFixed(3)}</td>
+    <div className="breakdown-wrap">
+      <table className="breakdown-table">
+        <thead>
+          <tr>
+            <th>Appliance</th>
+            <th>Qty</th>
+            <th>kWh/day</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {applianceRows.map((row) => (
+            <tr key={row.id}>
+              <td>{row.name}</td>
+              <td>{row.quantity}</td>
+              <td>{row.dailyKwh.toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <table className="breakdown-table">
+        <thead>
+          <tr>
+            <th>Producer</th>
+            <th>Qty</th>
+            <th>kWh/day</th>
+          </tr>
+        </thead>
+        <tbody>
+          {producerRows.map((row) => (
+            <tr key={row.id}>
+              <td>{row.name}</td>
+              <td>{row.quantity}</td>
+              <td>{row.dailyKwh.toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Appliance, HouseholdConfig, SimulationResult } from "../types/domain";
+import type { Appliance, HouseholdConfig, Producer, SimulationResult } from "../types/domain";
 
 const DAY_MINUTES = 1440;
 const HOUR_MINUTES = 60;
@@ -114,6 +114,14 @@ function scaleHourly(hourly: number[], factor: number): number[] {
   return hourly.map((value) => value * factor);
 }
 
+function forEachMinuteInWindow(startMin: number, endMin: number, cb: (minute: number) => void) {
+  for (const interval of splitWindow(startMin, endMin)) {
+    for (let minute = interval.s; minute < interval.e; minute += 1) {
+      cb(minute);
+    }
+  }
+}
+
 export function computeApplianceHourly(appliance: Appliance): number[] {
   if (!appliance.enabled) return safeArray24();
 
@@ -175,6 +183,56 @@ export function computeApplianceHourly(appliance: Appliance): number[] {
   return scaleHourly(baseHourly, quantity);
 }
 
+export function computeProducerHourly(producer: Producer): number[] {
+  if (!producer.enabled) return safeArray24();
+
+  const quantity = Math.max(1, Math.round(producer.quantity || 1));
+  const hourly = safeArray24();
+
+  if (producer.model.kind === "solar_curve") {
+    const start = clamp(producer.model.startMin, 0, DAY_MINUTES);
+    const end = clamp(producer.model.endMin, 0, DAY_MINUTES);
+    const length = windowLength(start, end);
+    if (length <= 0) return hourly;
+
+    const peakKw = positive(producer.model.peakKw) * quantity;
+    if (peakKw <= 0) return hourly;
+
+    let elapsed = 0;
+    forEachMinuteInWindow(start, end, (minute) => {
+      const progress = elapsed / length;
+      const kw = peakKw * Math.sin(Math.PI * progress);
+      const kwh = Math.max(0, kw) / 60;
+      const h = Math.floor(minute / 60) % 24;
+      hourly[h] = (hourly[h] ?? 0) + kwh;
+      elapsed += 1;
+    });
+
+    return hourly;
+  }
+
+  if (producer.model.kind === "battery_discharge") {
+    const start = clamp(producer.model.startMin, 0, DAY_MINUTES);
+    const end = clamp(producer.model.endMin, 0, DAY_MINUTES);
+    const maxOutputKwPerMin = (positive(producer.model.maxOutputKw) * quantity) / 60;
+    let remainingKwh = positive(producer.model.capacityKwh) * quantity;
+
+    if (remainingKwh <= 0 || maxOutputKwPerMin <= 0) return hourly;
+
+    forEachMinuteInWindow(start, end, (minute) => {
+      if (remainingKwh <= 0) return;
+      const produced = Math.min(maxOutputKwPerMin, remainingKwh);
+      const h = Math.floor(minute / 60) % 24;
+      hourly[h] = (hourly[h] ?? 0) + produced;
+      remainingKwh -= produced;
+    });
+
+    return hourly;
+  }
+
+  return hourly;
+}
+
 export function sumHourlies(series: number[][]): number[] {
   const result = safeArray24();
   for (const hourly of series) {
@@ -188,6 +246,8 @@ export function sumHourlies(series: number[][]): number[] {
 export function simulate(config: HouseholdConfig): SimulationResult {
   const perApplianceHourlyKwh: Record<string, number[]> = {};
   const perApplianceDailyKwh: Record<string, number> = {};
+  const perProducerHourlyKwh: Record<string, number[]> = {};
+  const perProducerDailyKwh: Record<string, number> = {};
 
   for (const appliance of config.appliances) {
     const hourly = computeApplianceHourly(appliance);
@@ -195,8 +255,19 @@ export function simulate(config: HouseholdConfig): SimulationResult {
     perApplianceDailyKwh[appliance.id] = sumArray(hourly);
   }
 
-  const hourlyTotalsKwh = sumHourlies(Object.values(perApplianceHourlyKwh));
-  const totalDailyKwh = sumArray(hourlyTotalsKwh);
+  for (const producer of config.producers) {
+    const hourly = computeProducerHourly(producer);
+    perProducerHourlyKwh[producer.id] = hourly;
+    perProducerDailyKwh[producer.id] = sumArray(hourly);
+  }
+
+  const hourlyConsumptionKwh = sumHourlies(Object.values(perApplianceHourlyKwh));
+  const hourlyProductionKwh = sumHourlies(Object.values(perProducerHourlyKwh));
+  const hourlyTotalsKwh = safeArray24().map((_, h) => (hourlyConsumptionKwh[h] ?? 0) - (hourlyProductionKwh[h] ?? 0));
+
+  const totalDailyConsumptionKwh = sumArray(hourlyConsumptionKwh);
+  const totalDailyProductionKwh = sumArray(hourlyProductionKwh);
+  const totalDailyKwh = totalDailyConsumptionKwh - totalDailyProductionKwh;
   const totalWeeklyKwh = totalDailyKwh * 7;
   const totalMonthlyKwh = totalDailyKwh * 30.4;
 
@@ -209,8 +280,14 @@ export function simulate(config: HouseholdConfig): SimulationResult {
 
   return {
     hourlyTotalsKwh,
+    hourlyConsumptionKwh,
+    hourlyProductionKwh,
     perApplianceHourlyKwh,
     perApplianceDailyKwh,
+    perProducerHourlyKwh,
+    perProducerDailyKwh,
+    totalDailyConsumptionKwh,
+    totalDailyProductionKwh,
     totalDailyKwh,
     totalWeeklyKwh,
     totalMonthlyKwh,

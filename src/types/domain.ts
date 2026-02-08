@@ -16,6 +16,8 @@ export type ApplianceIconId =
   | "fan"
   | "custom";
 
+export type ProducerIconId = "solar-panel" | "battery" | "producer-custom";
+
 export type ApplianceModel =
   | { kind: "always_on"; watts: number }
   | {
@@ -38,6 +40,21 @@ export type ApplianceModel =
       schedule?: { startMin: number; endMin: number };
     };
 
+export type ProducerModel =
+  | {
+      kind: "solar_curve";
+      peakKw: number;
+      startMin: number;
+      endMin: number;
+    }
+  | {
+      kind: "battery_discharge";
+      capacityKwh: number;
+      maxOutputKw: number;
+      startMin: number;
+      endMin: number;
+    };
+
 export interface Appliance {
   id: string;
   name: string;
@@ -48,12 +65,23 @@ export interface Appliance {
   model: ApplianceModel;
 }
 
+export interface Producer {
+  id: string;
+  name: string;
+  enabled: boolean;
+  quantity: number;
+  icon: ProducerIconId;
+  presetId?: string;
+  model: ProducerModel;
+}
+
 export interface HouseholdTemplate {
   id: string;
   name: string;
   bedrooms: number;
   occupants: number;
   appliances: Appliance[];
+  producers: Producer[];
 }
 
 export interface HouseholdConfig {
@@ -61,12 +89,19 @@ export interface HouseholdConfig {
   bedrooms: number;
   occupants: number;
   appliances: Appliance[];
+  producers: Producer[];
 }
 
 export interface SimulationResult {
   hourlyTotalsKwh: number[];
+  hourlyConsumptionKwh: number[];
+  hourlyProductionKwh: number[];
   perApplianceHourlyKwh: Record<string, number[]>;
   perApplianceDailyKwh: Record<string, number>;
+  perProducerHourlyKwh: Record<string, number[]>;
+  perProducerDailyKwh: Record<string, number>;
+  totalDailyConsumptionKwh: number;
+  totalDailyProductionKwh: number;
   totalDailyKwh: number;
   totalWeeklyKwh: number;
   totalMonthlyKwh: number;

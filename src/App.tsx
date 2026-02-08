@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { AddApplianceDialog } from "./components/AddApplianceDialog";
+import { AddProducerDialog } from "./components/AddProducerDialog";
 import { ApplianceEditorModal } from "./components/ApplianceEditorModal";
-import { SimulatorPage } from "./components/SimulatorPage";
 import { TemplatePickerPage } from "./components/TemplatePickerPage";
 import { appliancePresets, createApplianceFromPreset } from "./data/appliancePresets";
+import { createProducerFromPreset, producerPresets } from "./data/producerPresets";
 import { householdTemplates } from "./data/templates";
 import type { Appliance, HouseholdConfig, HouseholdTemplate } from "./types/domain";
 import { makeId } from "./utils/id";
 import { validateAppliance } from "./utils/validation";
+
+const SimulatorPage = lazy(async () => import("./components/SimulatorPage").then((mod) => ({ default: mod.SimulatorPage })));
 
 interface EditorState {
   isOpen: boolean;
@@ -37,6 +40,12 @@ function buildConfig(template: HouseholdTemplate): HouseholdConfig {
       id: makeId("appliance"),
       quantity: appliance.quantity ?? 1,
       icon: appliance.icon ?? "custom"
+    })),
+    producers: template.producers.map((producer) => ({
+      ...structuredClone(producer),
+      id: makeId("producer"),
+      quantity: producer.quantity ?? 1,
+      icon: producer.icon ?? "producer-custom"
     }))
   };
 }
@@ -45,6 +54,7 @@ export default function App() {
   const [config, setConfig] = useState<HouseholdConfig | null>(null);
   const [isTemplateDialogOpen, setTemplateDialogOpen] = useState(true);
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
+  const [isAddProducerDialogOpen, setAddProducerDialogOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>({
     isOpen: false,
     mode: "add",
@@ -81,12 +91,41 @@ export default function App() {
     });
   };
 
+  const addProducerFromPreset = (presetId: string) => {
+    setConfig((current) => {
+      if (!current) return current;
+      const existing = current.producers.find((producer) => producer.presetId === presetId && producer.icon !== "producer-custom");
+      if (existing) {
+        return {
+          ...current,
+          producers: current.producers.map((producer) =>
+            producer.id === existing.id ? { ...producer, quantity: producer.quantity + 1 } : producer
+          )
+        };
+      }
+
+      const preset = producerPresets.find((item) => item.id === presetId);
+      if (!preset) return current;
+      const producer = createProducerFromPreset(preset, makeId("producer"));
+      return {
+        ...current,
+        producers: [...current.producers, producer]
+      };
+    });
+  };
+
   const addFromSelection = (presetIds: string[], includeCustom: boolean) => {
     for (const presetId of presetIds) {
       addFromPreset(presetId);
     }
     if (includeCustom) {
       openAdd();
+    }
+  };
+
+  const addProducerFromSelection = (presetIds: string[]) => {
+    for (const presetId of presetIds) {
+      addProducerFromPreset(presetId);
     }
   };
 
@@ -110,6 +149,30 @@ export default function App() {
         appliances: current.appliances
           .map((appliance) => (appliance.id === id ? { ...appliance, quantity: appliance.quantity - 1 } : appliance))
           .filter((appliance) => appliance.quantity > 0)
+      };
+    });
+  };
+
+  const incrementProducerQuantity = (id: string) => {
+    setConfig((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        producers: current.producers.map((producer) =>
+          producer.id === id ? { ...producer, quantity: producer.quantity + 1 } : producer
+        )
+      };
+    });
+  };
+
+  const decrementProducerQuantity = (id: string) => {
+    setConfig((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        producers: current.producers
+          .map((producer) => (producer.id === id ? { ...producer, quantity: producer.quantity - 1 } : producer))
+          .filter((producer) => producer.quantity > 0)
       };
     });
   };
@@ -159,14 +222,19 @@ export default function App() {
   return (
     <div className="app-shell">
       {config ? (
-        <SimulatorPage
-          config={config}
-          onEdit={openEdit}
-          onIncrement={incrementQuantity}
-          onDecrement={decrementQuantity}
-          onOpenAddDialog={() => setAddDialogOpen(true)}
-          onOpenTemplates={() => setTemplateDialogOpen(true)}
-        />
+        <Suspense fallback={<div className="empty-state"><p>Loading simulator…</p></div>}>
+          <SimulatorPage
+            config={config}
+            onEdit={openEdit}
+            onIncrement={incrementQuantity}
+            onDecrement={decrementQuantity}
+            onIncrementProducer={incrementProducerQuantity}
+            onDecrementProducer={decrementProducerQuantity}
+            onOpenAddDialog={() => setAddDialogOpen(true)}
+            onOpenAddProducerDialog={() => setAddProducerDialogOpen(true)}
+            onOpenTemplates={() => setTemplateDialogOpen(true)}
+          />
+        </Suspense>
       ) : (
         <div className="empty-state">
           <h2>No household selected</h2>
@@ -186,6 +254,12 @@ export default function App() {
         open={isAddDialogOpen}
         onClose={() => setAddDialogOpen(false)}
         onAddSelection={addFromSelection}
+      />
+
+      <AddProducerDialog
+        open={isAddProducerDialogOpen}
+        onClose={() => setAddProducerDialogOpen(false)}
+        onAddSelection={addProducerFromSelection}
       />
 
       <ApplianceEditorModal

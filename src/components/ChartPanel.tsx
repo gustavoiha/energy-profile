@@ -1,19 +1,24 @@
-import type { Appliance, SimulationResult } from "../types/domain";
+import { Suspense, lazy } from "react";
+import type { Appliance, Producer, SimulationResult } from "../types/domain";
 import { BreakdownTable } from "./BreakdownTable";
-import { HourlyStackedChart } from "./HourlyStackedChart";
+
+const HourlyStackedChart = lazy(async () => import("./HourlyStackedChart").then((mod) => ({ default: mod.HourlyStackedChart })));
 
 interface ChartPanelProps {
   appliances: Appliance[];
+  producers: Producer[];
   sim: SimulationResult;
 }
 
-export function ChartPanel({ appliances, sim }: ChartPanelProps) {
+export function ChartPanel({ appliances, producers, sim }: ChartPanelProps) {
   return (
     <section className="chart-panel">
-      <h3>Hourly Consumption</h3>
-      <HourlyStackedChart appliances={appliances} sim={sim} />
+      <h3>Hourly Net Consumption (Consumption - Production)</h3>
+      <Suspense fallback={<div className="chart-wrap">Loading chart…</div>}>
+        <HourlyStackedChart appliances={appliances} producers={producers} sim={sim} />
+      </Suspense>
       <h3>Daily Breakdown</h3>
-      <BreakdownTable appliances={appliances} sim={sim} />
+      <BreakdownTable appliances={appliances} producers={producers} sim={sim} />
     </section>
   );
 }
