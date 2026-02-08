@@ -10,8 +10,7 @@ export function BreakdownTable({ appliances, sim }: BreakdownTableProps) {
     .map((appliance) => ({
       id: appliance.id,
       name: appliance.name,
-      category: appliance.category,
-      enabled: appliance.enabled,
+      quantity: appliance.quantity,
       dailyKwh: sim.perApplianceDailyKwh[appliance.id] ?? 0
     }))
     .sort((a, b) => b.dailyKwh - a.dailyKwh);
@@ -21,8 +20,7 @@ export function BreakdownTable({ appliances, sim }: BreakdownTableProps) {
       <thead>
         <tr>
           <th>Appliance</th>
-          <th>Category</th>
-          <th>Enabled</th>
+          <th>Qty</th>
           <th>kWh/day</th>
         </tr>
       </thead>
@@ -30,8 +28,7 @@ export function BreakdownTable({ appliances, sim }: BreakdownTableProps) {
         {rows.map((row) => (
           <tr key={row.id}>
             <td>{row.name}</td>
-            <td>{row.category}</td>
-            <td>{row.enabled ? "Yes" : "No"}</td>
+            <td>{row.quantity}</td>
             <td>{row.dailyKwh.toFixed(3)}</td>
           </tr>
         ))}

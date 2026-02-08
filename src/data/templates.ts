@@ -1,5 +1,5 @@
 import type { HouseholdTemplate } from "../types/domain";
-import { appliancePresets } from "./appliancePresets";
+import { appliancePresets, createApplianceFromPreset } from "./appliancePresets";
 
 const byId = new Map(appliancePresets.map((preset) => [preset.id, preset]));
 
@@ -8,13 +8,7 @@ function pick(id: string) {
   if (!preset) {
     throw new Error(`Missing preset: ${id}`);
   }
-  return {
-    id: `${id}-base`,
-    name: preset.name,
-    category: preset.category,
-    enabled: true,
-    model: structuredClone(preset.model)
-  };
+  return createApplianceFromPreset(preset, `${id}-base`);
 }
 
 export const householdTemplates: HouseholdTemplate[] = [
@@ -46,8 +40,7 @@ export const householdTemplates: HouseholdTemplate[] = [
           kind: "scheduled_window",
           watts: 80,
           startMin: 19 * 60,
-          durationMin: 180,
-          weekdays: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+          durationMin: 180
         }
       },
       { ...pick("lighting"), model: { kind: "count_based", count: 8, wattsEach: 7, schedule: { startMin: 18 * 60, endMin: 22 * 60 } } },
@@ -57,8 +50,7 @@ export const householdTemplates: HouseholdTemplate[] = [
           kind: "scheduled_window",
           watts: 600,
           startMin: 19 * 60,
-          durationMin: 70,
-          weekdays: ["tuesday", "thursday"]
+          durationMin: 70
         }
       }
     ]

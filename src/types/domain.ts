@@ -1,20 +1,20 @@
-export type ApplianceCategory =
+export type ApplianceIconId =
+  | "fridge"
+  | "router"
+  | "tv"
+  | "dishwasher"
+  | "washing-machine"
   | "lighting"
-  | "kitchen"
-  | "laundry"
-  | "entertainment"
-  | "network"
-  | "hvac"
-  | "other";
-
-export type Weekday =
-  | "monday"
-  | "tuesday"
-  | "wednesday"
-  | "thursday"
-  | "friday"
-  | "saturday"
-  | "sunday";
+  | "ac"
+  | "oven"
+  | "stove"
+  | "shower"
+  | "heating"
+  | "cellphone-charger"
+  | "microwave"
+  | "laptop"
+  | "fan"
+  | "custom";
 
 export type ApplianceModel =
   | { kind: "always_on"; watts: number }
@@ -23,7 +23,6 @@ export type ApplianceModel =
       watts: number;
       startMin: number;
       durationMin: number;
-      weekdays: Weekday[];
     }
   | {
       kind: "daily_duration";
@@ -42,8 +41,10 @@ export type ApplianceModel =
 export interface Appliance {
   id: string;
   name: string;
-  category: ApplianceCategory;
   enabled: boolean;
+  quantity: number;
+  icon: ApplianceIconId;
+  presetId?: string;
   model: ApplianceModel;
 }
 

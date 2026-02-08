@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeApplianceHourly, simulate } from "./simulate";
-import type { Appliance, ApplianceModel, HouseholdConfig, Weekday } from "../types/domain";
+import type { Appliance, ApplianceModel, HouseholdConfig } from "../types/domain";
 
 function approx(actual: number, expected: number, digits = 8) {
   expect(actual).toBeCloseTo(expected, digits);
@@ -10,13 +10,12 @@ function mkAppliance(id: string, model: ApplianceModel, enabled = true): Applian
   return {
     id,
     name: id,
-    category: "other",
     enabled,
+    quantity: 1,
+    icon: "custom",
     model
   };
 }
-
-const allWeekdays: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 describe("computeApplianceHourly", () => {
   it("handles scheduled windows crossing midnight", () => {
@@ -25,8 +24,7 @@ describe("computeApplianceHourly", () => {
         kind: "scheduled_window",
         watts: 600,
         startMin: 23 * 60 + 30,
-        durationMin: 120,
-        weekdays: allWeekdays
+        durationMin: 120
       })
     );
 
@@ -36,19 +34,27 @@ describe("computeApplianceHourly", () => {
     approx(hourly.reduce((a, b) => a + b, 0), 1.2);
   });
 
-  it("applies weekday weighting for average-day results", () => {
+  it("computes daily scheduled-window consumption without weekday weighting", () => {
     const hourly = computeApplianceHourly(
-      mkAppliance("weekday-device", {
+      mkAppliance("daily-device", {
         kind: "scheduled_window",
         watts: 700,
         startMin: 20 * 60,
-        durationMin: 60,
-        weekdays: ["monday", "wednesday", "friday"]
+        durationMin: 60
       })
     );
 
-    approx(hourly[20] ?? 0, 0.3);
-    approx(hourly.reduce((a, b) => a + b, 0), 0.3);
+    approx(hourly[20] ?? 0, 0.7);
+    approx(hourly.reduce((a, b) => a + b, 0), 0.7);
+  });
+
+  it("applies quantity multiplier", () => {
+    const hourly = computeApplianceHourly({
+      ...mkAppliance("mult", { kind: "always_on", watts: 100 }),
+      quantity: 3
+    });
+
+    approx(hourly.reduce((a, b) => a + b, 0), 7.2);
   });
 
   it("clamps daily_duration to the provided window length", () => {
@@ -92,7 +98,7 @@ describe("simulate", () => {
       occupants: 2,
       appliances: [
         mkAppliance("base", { kind: "always_on", watts: 100 }),
-        mkAppliance("boost", { kind: "scheduled_window", watts: 900, startMin: 0, durationMin: 60, weekdays: allWeekdays })
+        mkAppliance("boost", { kind: "scheduled_window", watts: 900, startMin: 0, durationMin: 60 })
       ]
     };
 

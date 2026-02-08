@@ -1,5 +1,5 @@
 import { computeApplianceHourly } from "../sim/simulate";
-import type { Appliance, ApplianceCategory, ApplianceModel, Weekday } from "../types/domain";
+import type { Appliance, ApplianceModel } from "../types/domain";
 import { fmtMinuteOfDay, parseHourMinute } from "../utils/time";
 import { validateAppliance } from "../utils/validation";
 
@@ -12,26 +12,14 @@ interface ApplianceEditorModalProps {
   onSave: () => void;
 }
 
-const categories: ApplianceCategory[] = [
-  "lighting",
-  "kitchen",
-  "laundry",
-  "entertainment",
-  "network",
-  "hvac",
-  "other"
-];
-
 const modelKinds: ApplianceModel["kind"][] = ["always_on", "scheduled_window", "daily_duration", "count_based"];
-
-const weekdays: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 function defaultModel(kind: ApplianceModel["kind"]): ApplianceModel {
   switch (kind) {
     case "always_on":
       return { kind, watts: 100 };
     case "scheduled_window":
-      return { kind, watts: 100, startMin: 18 * 60, durationMin: 120, weekdays: [...weekdays] };
+      return { kind, watts: 100, startMin: 18 * 60, durationMin: 120 };
     case "daily_duration":
       return { kind, watts: 100, minutesPerDay: 120 };
     case "count_based":
@@ -39,17 +27,6 @@ function defaultModel(kind: ApplianceModel["kind"]): ApplianceModel {
     default:
       return { kind: "always_on", watts: 100 };
   }
-}
-
-function toggleWeekday(selected: Weekday[], day: Weekday): Weekday[] {
-  if (selected.includes(day)) {
-    return selected.filter((d) => d !== day);
-  }
-  return [...selected, day];
-}
-
-function labelForWeekday(day: Weekday): string {
-  return day.slice(0, 3).toUpperCase();
 }
 
 function NumInput({
@@ -115,8 +92,7 @@ function renderModelFields(draft: Appliance, onChangeDraft: (draft: Appliance) =
                     kind: "scheduled_window",
                     watts: v,
                     startMin: model.startMin,
-                    durationMin: model.durationMin,
-                    weekdays: model.weekdays
+                    durationMin: model.durationMin
                   }
                 })
               }
@@ -133,8 +109,7 @@ function renderModelFields(draft: Appliance, onChangeDraft: (draft: Appliance) =
                     kind: "scheduled_window",
                     watts: model.watts,
                     startMin: v,
-                    durationMin: model.durationMin,
-                    weekdays: model.weekdays
+                    durationMin: model.durationMin
                   }
                 })
               }
@@ -153,39 +128,12 @@ function renderModelFields(draft: Appliance, onChangeDraft: (draft: Appliance) =
                     kind: "scheduled_window",
                     watts: model.watts,
                     startMin: model.startMin,
-                    durationMin: v,
-                    weekdays: model.weekdays
+                    durationMin: v
                   }
                 })
               }
             />
           </label>
-          <div>
-            <p>Weekdays</p>
-            <div className="weekday-grid">
-              {weekdays.map((day) => (
-                <label key={day} className="weekday-pill">
-                  <input
-                    type="checkbox"
-                    checked={model.weekdays.includes(day)}
-                    onChange={() =>
-                      onChangeDraft({
-                        ...draft,
-                        model: {
-                          kind: "scheduled_window",
-                          watts: model.watts,
-                          startMin: model.startMin,
-                          durationMin: model.durationMin,
-                          weekdays: toggleWeekday(model.weekdays, day)
-                        }
-                      })
-                    }
-                  />
-                  {labelForWeekday(day)}
-                </label>
-              ))}
-            </div>
-          </div>
         </>
       );
     }
@@ -383,17 +331,6 @@ export function ApplianceEditorModal({ open, draft, mode, onChangeDraft, onCance
         <label>
           Name
           <input type="text" value={draft.name} onChange={(e) => onChangeDraft({ ...draft, name: e.target.value })} />
-        </label>
-
-        <label>
-          Category
-          <select value={draft.category} onChange={(e) => onChangeDraft({ ...draft, category: e.target.value as ApplianceCategory })}>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
         </label>
 
         <label>

@@ -6,8 +6,9 @@ function baseAppliance(): Appliance {
   return {
     id: "a1",
     name: "Test",
-    category: "other",
     enabled: true,
+    quantity: 1,
+    icon: "custom",
     model: { kind: "always_on", watts: 100 }
   };
 }
@@ -24,20 +25,19 @@ describe("validateAppliance", () => {
     expect(errors).toContain("Name is required");
   });
 
-  it("requires at least one weekday for scheduled windows", () => {
+  it("validates scheduled window duration", () => {
     const appliance: Appliance = {
       ...baseAppliance(),
       model: {
         kind: "scheduled_window",
         watts: 1200,
         startMin: 19 * 60,
-        durationMin: 90,
-        weekdays: []
+        durationMin: 2000
       }
     };
 
     const errors = validateAppliance(appliance);
-    expect(errors).toContain("Select at least one weekday");
+    expect(errors).toContain("Duration must be between 0 and 1,440 minutes");
   });
 
   it("rejects non-integer count for count_based", () => {

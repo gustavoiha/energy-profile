@@ -1,28 +1,48 @@
 import type { Appliance } from "../types/domain";
+import { ApplianceIcon } from "./ApplianceIcon";
 
 interface ApplianceRowProps {
   appliance: Appliance;
-  onToggle: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onIncrement: (id: string) => void;
+  onDecrement: (id: string) => void;
 }
 
-export function ApplianceRow({ appliance, onToggle, onEdit, onDelete }: ApplianceRowProps) {
+export function ApplianceRow({ appliance, onEdit, onIncrement, onDecrement }: ApplianceRowProps) {
   return (
-    <div className="appliance-row">
+    <div className="appliance-row" tabIndex={0}>
       <div className="appliance-row-main">
-        <input type="checkbox" checked={appliance.enabled} onChange={() => onToggle(appliance.id)} />
-        <div>
-          <strong>{appliance.name}</strong>
-          <p>{appliance.category}</p>
-        </div>
+        <ApplianceIcon icon={appliance.icon} />
+        <strong>{appliance.name}</strong>
+        <span className="qty-pill">x{appliance.quantity}</span>
       </div>
-      <div className="appliance-row-actions">
-        <button type="button" onClick={() => onEdit(appliance.id)}>
-          Edit
+      <div className="row-actions">
+        <button
+          type="button"
+          className="icon-action-btn"
+          onClick={() => onDecrement(appliance.id)}
+          aria-label={`Decrease ${appliance.name}`}
+          title={`Decrease ${appliance.name}`}
+        >
+          -
         </button>
-        <button type="button" className="danger" onClick={() => onDelete(appliance.id)}>
-          Remove
+        <button
+          type="button"
+          className="icon-action-btn"
+          onClick={() => onIncrement(appliance.id)}
+          aria-label={`Increase ${appliance.name}`}
+          title={`Increase ${appliance.name}`}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          className="icon-edit-btn"
+          onClick={() => onEdit(appliance.id)}
+          aria-label={`Edit ${appliance.name}`}
+          title={`Edit ${appliance.name}`}
+        >
+          ✎
         </button>
       </div>
     </div>

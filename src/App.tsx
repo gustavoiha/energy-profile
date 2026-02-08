@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { AddApplianceDialog } from "./components/AddApplianceDialog";
 import { ApplianceEditorModal } from "./components/ApplianceEditorModal";
 import { SimulatorPage } from "./components/SimulatorPage";
 import { TemplatePickerPage } from "./components/TemplatePickerPage";
+import { appliancePresets, createApplianceFromPreset } from "./data/appliancePresets";
 import { householdTemplates } from "./data/templates";
 import type { Appliance, HouseholdConfig, HouseholdTemplate } from "./types/domain";
 import { makeId } from "./utils/id";
@@ -17,9 +19,10 @@ interface EditorState {
 function defaultDraft(): Appliance {
   return {
     id: makeId("appliance"),
-    name: "New Appliance",
-    category: "other",
+    name: "Custom Appliance",
     enabled: true,
+    quantity: 1,
+    icon: "custom",
     model: { kind: "always_on", watts: 100 }
   };
 }
@@ -29,13 +32,19 @@ function buildConfig(template: HouseholdTemplate): HouseholdConfig {
     templateId: template.id,
     bedrooms: template.bedrooms,
     occupants: template.occupants,
-    appliances: template.appliances.map((appliance) => ({ ...structuredClone(appliance), id: makeId("appliance") }))
+    appliances: template.appliances.map((appliance) => ({
+      ...structuredClone(appliance),
+      id: makeId("appliance"),
+      quantity: appliance.quantity ?? 1,
+      icon: appliance.icon ?? "custom"
+    }))
   };
 }
 
 export default function App() {
   const [config, setConfig] = useState<HouseholdConfig | null>(null);
   const [isTemplateDialogOpen, setTemplateDialogOpen] = useState(true);
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const [editor, setEditor] = useState<EditorState>({
     isOpen: false,
     mode: "add",
@@ -49,22 +58,59 @@ export default function App() {
     setTemplateDialogOpen(false);
   };
 
-  const toggleEnabled = (id: string) => {
+  const addFromPreset = (presetId: string) => {
+    setConfig((current) => {
+      if (!current) return current;
+      const existing = current.appliances.find((appliance) => appliance.presetId === presetId && appliance.icon !== "custom");
+      if (existing) {
+        return {
+          ...current,
+          appliances: current.appliances.map((appliance) =>
+            appliance.id === existing.id ? { ...appliance, quantity: appliance.quantity + 1 } : appliance
+          )
+        };
+      }
+
+      const preset = appliancePresets.find((item) => item.id === presetId);
+      if (!preset) return current;
+      const appliance = createApplianceFromPreset(preset, makeId("appliance"));
+      return {
+        ...current,
+        appliances: [...current.appliances, appliance]
+      };
+    });
+  };
+
+  const addFromSelection = (presetIds: string[], includeCustom: boolean) => {
+    for (const presetId of presetIds) {
+      addFromPreset(presetId);
+    }
+    if (includeCustom) {
+      openAdd();
+    }
+  };
+
+  const incrementQuantity = (id: string) => {
     setConfig((current) => {
       if (!current) return current;
       return {
         ...current,
         appliances: current.appliances.map((appliance) =>
-          appliance.id === id ? { ...appliance, enabled: !appliance.enabled } : appliance
+          appliance.id === id ? { ...appliance, quantity: appliance.quantity + 1 } : appliance
         )
       };
     });
   };
 
-  const removeAppliance = (id: string) => {
+  const decrementQuantity = (id: string) => {
     setConfig((current) => {
       if (!current) return current;
-      return { ...current, appliances: current.appliances.filter((appliance) => appliance.id !== id) };
+      return {
+        ...current,
+        appliances: current.appliances
+          .map((appliance) => (appliance.id === id ? { ...appliance, quantity: appliance.quantity - 1 } : appliance))
+          .filter((appliance) => appliance.quantity > 0)
+      };
     });
   };
 
@@ -93,14 +139,16 @@ export default function App() {
       if (editor.mode === "add") {
         return {
           ...current,
-          appliances: [...current.appliances, { ...editor.draft, id: makeId("appliance") }]
+          appliances: [...current.appliances, { ...editor.draft, id: makeId("appliance"), icon: "custom", presetId: undefined }]
         };
       }
 
       return {
         ...current,
         appliances: current.appliances.map((appliance) =>
-          appliance.id === editor.editingId ? { ...editor.draft, id: appliance.id } : appliance
+          appliance.id === editor.editingId
+            ? { ...editor.draft, id: appliance.id, icon: "custom", presetId: undefined }
+            : appliance
         )
       };
     });
@@ -113,10 +161,10 @@ export default function App() {
       {config ? (
         <SimulatorPage
           config={config}
-          onToggle={toggleEnabled}
-          onAdd={openAdd}
           onEdit={openEdit}
-          onDelete={removeAppliance}
+          onIncrement={incrementQuantity}
+          onDecrement={decrementQuantity}
+          onOpenAddDialog={() => setAddDialogOpen(true)}
           onOpenTemplates={() => setTemplateDialogOpen(true)}
         />
       ) : (
@@ -132,6 +180,12 @@ export default function App() {
         onSelect={selectTemplate}
         onClose={() => setTemplateDialogOpen(false)}
         requireSelection={!config}
+      />
+
+      <AddApplianceDialog
+        open={isAddDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        onAddSelection={addFromSelection}
       />
 
       <ApplianceEditorModal

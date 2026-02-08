@@ -1,67 +1,62 @@
-import type { Appliance, ApplianceCategory, ApplianceModel, Weekday } from "../types/domain";
+import type { Appliance, ApplianceIconId, ApplianceModel } from "../types/domain";
 
-interface Preset {
+export interface AppliancePreset {
   id: string;
   name: string;
-  category: ApplianceCategory;
+  icon: ApplianceIconId;
   model: ApplianceModel;
 }
 
-const allWeekdays: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-export const appliancePresets: Preset[] = [
+export const appliancePresets: AppliancePreset[] = [
   {
     id: "fridge",
     name: "Fridge",
-    category: "kitchen",
+    icon: "fridge",
     model: { kind: "always_on", watts: 90 }
   },
   {
     id: "router",
     name: "Router",
-    category: "network",
+    icon: "router",
     model: { kind: "always_on", watts: 10 }
   },
   {
     id: "tv",
     name: "TV",
-    category: "entertainment",
+    icon: "tv",
     model: {
       kind: "scheduled_window",
       watts: 100,
       startMin: 19 * 60,
-      durationMin: 180,
-      weekdays: allWeekdays
+      durationMin: 180
     }
   },
   {
     id: "dishwasher",
     name: "Dishwasher",
-    category: "kitchen",
+    icon: "dishwasher",
     model: {
       kind: "scheduled_window",
       watts: 800,
       startMin: 20 * 60,
-      durationMin: 90,
-      weekdays: ["monday", "wednesday", "friday", "saturday"]
+      durationMin: 90
     }
   },
   {
     id: "washing-machine",
     name: "Washing Machine",
-    category: "laundry",
+    icon: "washing-machine",
     model: {
       kind: "scheduled_window",
       watts: 640,
       startMin: 19 * 60,
-      durationMin: 75,
-      weekdays: ["tuesday", "thursday", "saturday"]
+      durationMin: 75
     }
   },
   {
     id: "lighting",
     name: "Lighting",
-    category: "lighting",
+    icon: "lighting",
     model: {
       kind: "count_based",
       count: 10,
@@ -72,22 +67,112 @@ export const appliancePresets: Preset[] = [
   {
     id: "ac",
     name: "Air Conditioner",
-    category: "hvac",
+    icon: "ac",
     model: {
       kind: "daily_duration",
       watts: 1500,
       minutesPerDay: 240,
       window: { startMin: 13 * 60, endMin: 23 * 60 }
     }
+  },
+  {
+    id: "oven",
+    name: "Oven",
+    icon: "oven",
+    model: {
+      kind: "scheduled_window",
+      watts: 2200,
+      startMin: 18 * 60,
+      durationMin: 60
+    }
+  },
+  {
+    id: "stove",
+    name: "Stove",
+    icon: "stove",
+    model: {
+      kind: "scheduled_window",
+      watts: 1800,
+      startMin: 12 * 60,
+      durationMin: 45
+    }
+  },
+  {
+    id: "shower",
+    name: "Electric Shower",
+    icon: "shower",
+    model: {
+      kind: "scheduled_window",
+      watts: 4500,
+      startMin: 7 * 60,
+      durationMin: 25
+    }
+  },
+  {
+    id: "heating",
+    name: "Space Heating",
+    icon: "heating",
+    model: {
+      kind: "daily_duration",
+      watts: 1800,
+      minutesPerDay: 300,
+      window: { startMin: 6 * 60, endMin: 23 * 60 }
+    }
+  },
+  {
+    id: "cellphone-charger",
+    name: "Cellphone Charger",
+    icon: "cellphone-charger",
+    model: {
+      kind: "count_based",
+      count: 2,
+      wattsEach: 8,
+      schedule: { startMin: 22 * 60, endMin: 24 * 60 }
+    }
+  },
+  {
+    id: "microwave",
+    name: "Microwave",
+    icon: "microwave",
+    model: {
+      kind: "scheduled_window",
+      watts: 1200,
+      startMin: 13 * 60,
+      durationMin: 15
+    }
+  },
+  {
+    id: "laptop",
+    name: "Laptop",
+    icon: "laptop",
+    model: {
+      kind: "scheduled_window",
+      watts: 65,
+      startMin: 9 * 60,
+      durationMin: 360
+    }
+  },
+  {
+    id: "fan",
+    name: "Fan",
+    icon: "fan",
+    model: {
+      kind: "daily_duration",
+      watts: 70,
+      minutesPerDay: 420,
+      window: { startMin: 12 * 60, endMin: 24 * 60 }
+    }
   }
 ];
 
-export function createApplianceFromPreset(preset: Preset, id: string): Appliance {
+export function createApplianceFromPreset(preset: AppliancePreset, id: string): Appliance {
   return {
     id,
     name: preset.name,
-    category: preset.category,
     enabled: true,
+    quantity: 1,
+    icon: preset.icon,
+    presetId: preset.id,
     model: structuredClone(preset.model)
   };
 }

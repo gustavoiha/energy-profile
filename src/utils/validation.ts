@@ -13,6 +13,10 @@ export function validateAppliance(appliance: Appliance): string[] {
     errors.push("Name is required");
   }
 
+  if (!Number.isInteger(appliance.quantity) || appliance.quantity < 1 || appliance.quantity > 1000) {
+    errors.push("Quantity must be an integer between 1 and 1,000");
+  }
+
   const model = appliance.model;
   switch (model.kind) {
     case "always_on": {
@@ -26,9 +30,6 @@ export function validateAppliance(appliance: Appliance): string[] {
       }
       if (!numRange(model.durationMin, 0, MAX_MINUTES)) {
         errors.push("Duration must be between 0 and 1,440 minutes");
-      }
-      if (model.weekdays.length === 0) {
-        errors.push("Select at least one weekday");
       }
       break;
     }

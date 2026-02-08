@@ -3,21 +3,21 @@ import { ApplianceRow } from "./ApplianceRow";
 
 interface ApplianceListProps {
   appliances: Appliance[];
-  onToggle: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onIncrement: (id: string) => void;
+  onDecrement: (id: string) => void;
 }
 
-export function ApplianceList({ appliances, onToggle, onEdit, onDelete }: ApplianceListProps) {
+export function ApplianceList({ appliances, onEdit, onIncrement, onDecrement }: ApplianceListProps) {
   return (
     <div className="appliance-list">
       {appliances.map((appliance) => (
         <ApplianceRow
           key={appliance.id}
           appliance={appliance}
-          onToggle={onToggle}
           onEdit={onEdit}
-          onDelete={onDelete}
+          onIncrement={onIncrement}
+          onDecrement={onDecrement}
         />
       ))}
     </div>

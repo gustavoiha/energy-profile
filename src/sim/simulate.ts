@@ -1,8 +1,7 @@
-import type { Appliance, HouseholdConfig, SimulationResult, Weekday } from "../types/domain";
+import type { Appliance, HouseholdConfig, SimulationResult } from "../types/domain";
 
 const DAY_MINUTES = 1440;
 const HOUR_MINUTES = 60;
-const WEEK_DAYS = 7;
 
 function clamp(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -45,28 +44,18 @@ function overlapMinutes(aS: number, aE: number, bS: number, bE: number): number 
   return Math.max(0, Math.min(aE, bE) - Math.max(aS, bS));
 }
 
-function weekdaysWeight(weekdays: Weekday[]): number {
-  return clamp(weekdays.length, 0, WEEK_DAYS) / WEEK_DAYS;
-}
-
 function endFromDuration(startMin: number, durationMin: number): number {
   const start = clamp(startMin, 0, DAY_MINUTES);
   const duration = clamp(durationMin, 0, DAY_MINUTES);
   return (start + duration) % DAY_MINUTES;
 }
 
-function computeScheduledWindowHourly(
-  watts: number,
-  startMin: number,
-  durationMin: number,
-  weekdays: Weekday[]
-): number[] {
+function computeScheduledWindowHourly(watts: number, startMin: number, durationMin: number): number[] {
   const hourly = safeArray24();
   const safeWatts = positive(watts);
   const safeDuration = clamp(durationMin, 0, DAY_MINUTES);
-  const factor = weekdaysWeight(weekdays);
 
-  if (safeWatts <= 0 || safeDuration <= 0 || factor <= 0) return hourly;
+  if (safeWatts <= 0 || safeDuration <= 0) return hourly;
 
   const endMin = endFromDuration(startMin, safeDuration);
 
@@ -76,7 +65,7 @@ function computeScheduledWindowHourly(
       const hourE = hourS + HOUR_MINUTES;
       const minutes = overlapMinutes(interval.s, interval.e, hourS, hourE);
       if (minutes > 0) {
-        hourly[h] = (hourly[h] ?? 0) + (minutes / 60) * (safeWatts / 1000) * factor;
+        hourly[h] = (hourly[h] ?? 0) + (minutes / 60) * (safeWatts / 1000);
       }
     }
   }
@@ -120,16 +109,25 @@ function sumArray(values: number[]): number {
   return values.reduce((acc, v) => acc + v, 0);
 }
 
+function scaleHourly(hourly: number[], factor: number): number[] {
+  if (factor === 1) return hourly;
+  return hourly.map((value) => value * factor);
+}
+
 export function computeApplianceHourly(appliance: Appliance): number[] {
   if (!appliance.enabled) return safeArray24();
 
   const model = appliance.model;
+  let baseHourly: number[];
+
   switch (model.kind) {
     case "always_on":
-      return safeArray24().map(() => positive(model.watts) / 1000);
+      baseHourly = safeArray24().map(() => positive(model.watts) / 1000);
+      break;
 
     case "scheduled_window":
-      return computeScheduledWindowHourly(model.watts, model.startMin, model.durationMin, model.weekdays);
+      baseHourly = computeScheduledWindowHourly(model.watts, model.startMin, model.durationMin);
+      break;
 
     case "daily_duration": {
       const duration = clamp(model.minutesPerDay, 0, DAY_MINUTES);
@@ -139,35 +137,42 @@ export function computeApplianceHourly(appliance: Appliance): number[] {
         const len = windowLength(model.window.startMin, model.window.endMin);
         const clampedDur = Math.min(duration, len);
         const centered = centerDurationInWindow(clampedDur, model.window.startMin, model.window.endMin);
-        return computeFixedWindowWattsHourly(model.watts, centered.start, centered.end);
+        baseHourly = computeFixedWindowWattsHourly(model.watts, centered.start, centered.end);
+      } else {
+        const start = 8 * 60;
+        const end = (start + duration) % DAY_MINUTES;
+        baseHourly = computeFixedWindowWattsHourly(model.watts, start, end);
       }
-
-      const start = 8 * 60;
-      const end = (start + duration) % DAY_MINUTES;
-      return computeFixedWindowWattsHourly(model.watts, start, end);
+      break;
     }
 
     case "count_based": {
       const watts = clamp(model.count, 0, 200) * positive(model.wattsEach);
       if (model.schedule) {
-        return computeFixedWindowWattsHourly(watts, model.schedule.startMin, model.schedule.endMin);
-      }
-      if (model.minutesPerDay !== undefined) {
-        return computeApplianceHourly({
+        baseHourly = computeFixedWindowWattsHourly(watts, model.schedule.startMin, model.schedule.endMin);
+      } else if (model.minutesPerDay !== undefined) {
+        baseHourly = computeApplianceHourly({
           ...appliance,
+          quantity: 1,
           model: {
             kind: "daily_duration",
             watts,
             minutesPerDay: model.minutesPerDay
           }
         });
+      } else {
+        baseHourly = safeArray24();
       }
-      return safeArray24();
+      break;
     }
 
     default:
-      return safeArray24();
+      baseHourly = safeArray24();
+      break;
   }
+
+  const quantity = Math.max(1, Math.round(appliance.quantity || 1));
+  return scaleHourly(baseHourly, quantity);
 }
 
 export function sumHourlies(series: number[][]): number[] {
