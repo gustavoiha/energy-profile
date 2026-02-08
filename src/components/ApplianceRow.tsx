@@ -6,17 +6,19 @@ interface ApplianceRowProps {
   onEdit: (id: string) => void;
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
+  onToggleEnabled: (id: string) => void;
+  onRemove: (id: string) => void;
 }
 
-export function ApplianceRow({ appliance, onEdit, onIncrement, onDecrement }: ApplianceRowProps) {
+export function ApplianceRow({ appliance, onEdit, onIncrement, onDecrement, onToggleEnabled, onRemove }: ApplianceRowProps) {
   return (
-    <div className="appliance-row" tabIndex={0}>
+    <div className={`appliance-row ${appliance.enabled ? "" : "is-disabled"}`} tabIndex={0}>
       <div className="appliance-row-main">
         <ApplianceIcon icon={appliance.icon} />
         <strong>{appliance.name}</strong>
         <span className="qty-pill">x{appliance.quantity}</span>
       </div>
-      <div className="row-actions">
+      <div className="row-actions always-visible">
         <button
           type="button"
           className="icon-action-btn"
@@ -42,7 +44,25 @@ export function ApplianceRow({ appliance, onEdit, onIncrement, onDecrement }: Ap
           aria-label={`Edit ${appliance.name}`}
           title={`Edit ${appliance.name}`}
         >
-          ✎
+          E
+        </button>
+        <button
+          type="button"
+          className="icon-edit-btn"
+          onClick={() => onToggleEnabled(appliance.id)}
+          aria-label={`${appliance.enabled ? "Disable" : "Enable"} ${appliance.name}`}
+          title={`${appliance.enabled ? "Disable" : "Enable"} ${appliance.name}`}
+        >
+          {appliance.enabled ? "On" : "Off"}
+        </button>
+        <button
+          type="button"
+          className="icon-delete-btn"
+          onClick={() => onRemove(appliance.id)}
+          aria-label={`Remove ${appliance.name}`}
+          title={`Remove ${appliance.name}`}
+        >
+          X
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeApplianceHourly, simulate } from "./simulate";
-import type { Appliance, ApplianceModel, HouseholdConfig, Producer } from "../types/domain";
+import { compareSimulation, computeApplianceHourly, simulate } from "./simulate";
+import type { Appliance, ApplianceModel, HouseholdConfig, Producer, TariffModel } from "../types/domain";
 
 function approx(actual: number, expected: number, digits = 8) {
   expect(actual).toBeCloseTo(expected, digits);
@@ -17,7 +17,7 @@ function mkAppliance(id: string, model: ApplianceModel, enabled = true): Applian
   };
 }
 
-function mkBattery(id: string): Producer {
+function mkBattery(id: string, strategy: "self_consumption" | "peak_shaving" = "self_consumption"): Producer {
   return {
     id,
     name: "Battery",
@@ -28,9 +28,26 @@ function mkBattery(id: string): Producer {
       kind: "battery_discharge",
       capacityKwh: 2,
       maxOutputKw: 1,
-      startMin: 18 * 60,
-      endMin: 24 * 60
+      startMin: 12 * 60,
+      endMin: 24 * 60,
+      strategy
     }
+  };
+}
+
+function configWith(
+  appliances: Appliance[],
+  producers: Producer[],
+  tariff: TariffModel = { kind: "flat", currency: "USD", ratePerKwh: 0.2, sellBackRatePerKwh: 0 }
+): HouseholdConfig {
+  return {
+    templateId: "t",
+    bedrooms: 1,
+    occupants: 2,
+    profile: { dayType: "weekday", season: "summer" },
+    tariff,
+    appliances,
+    producers
   };
 }
 
@@ -109,16 +126,13 @@ describe("computeApplianceHourly", () => {
 
 describe("simulate", () => {
   it("aggregates totals and identifies peak hour", () => {
-    const config: HouseholdConfig = {
-      templateId: "t1",
-      bedrooms: 1,
-      occupants: 2,
-      appliances: [
+    const config = configWith(
+      [
         mkAppliance("base", { kind: "always_on", watts: 100 }),
         mkAppliance("boost", { kind: "scheduled_window", watts: 900, startMin: 0, durationMin: 60 })
       ],
-      producers: []
-    };
+      []
+    );
 
     const result = simulate(config);
 
@@ -131,14 +145,53 @@ describe("simulate", () => {
     approx(result.hourlyTotalsKwh[0] ?? 0, 1.0);
   });
 
-  it("battery does not produce without excess producer energy", () => {
-    const config: HouseholdConfig = {
-      templateId: "t2",
-      bedrooms: 1,
-      occupants: 2,
-      appliances: [mkAppliance("base", { kind: "always_on", watts: 500 })],
-      producers: [mkBattery("b1")]
+  it("computes flat tariff cost", () => {
+    const config = configWith([mkAppliance("base", { kind: "always_on", watts: 100 })], []);
+    const result = simulate(config);
+
+    approx(result.totalDailyConsumptionKwh, 2.4);
+    approx(result.totalDailyCost, 0.48);
+    approx(result.totalMonthlyCost, 14.592);
+    approx(result.totalMonthlySavings, 0);
+  });
+
+  it("computes TOU windows crossing midnight", () => {
+    const tou: TariffModel = {
+      kind: "tou",
+      currency: "USD",
+      defaultRatePerKwh: 0.1,
+      windows: [
+        {
+          id: "peak-cross-midnight",
+          startMin: 22 * 60,
+          endMin: 2 * 60,
+          ratePerKwh: 0.5,
+          dayTypes: ["weekday", "weekend"],
+          seasons: ["summer", "winter"]
+        }
+      ]
     };
+
+    const config = configWith(
+      [
+        mkAppliance("late", {
+          kind: "scheduled_window",
+          watts: 1000,
+          startMin: 23 * 60,
+          durationMin: 120
+        })
+      ],
+      [],
+      tou
+    );
+
+    const result = simulate(config);
+    approx(result.totalDailyKwh, 2);
+    approx(result.totalDailyCost, 1);
+  });
+
+  it("battery does not produce without excess producer energy", () => {
+    const config = configWith([mkAppliance("base", { kind: "always_on", watts: 500 })], [mkBattery("b1")]);
 
     const result = simulate(config);
     approx(result.totalDailyProductionKwh, 0);
@@ -146,12 +199,9 @@ describe("simulate", () => {
   });
 
   it("battery only discharges energy captured from daytime excess", () => {
-    const config: HouseholdConfig = {
-      templateId: "t3",
-      bedrooms: 1,
-      occupants: 2,
-      appliances: [mkAppliance("base", { kind: "always_on", watts: 100 })],
-      producers: [
+    const config = configWith(
+      [mkAppliance("base", { kind: "always_on", watts: 100 })],
+      [
         {
           id: "solar",
           name: "Solar",
@@ -162,11 +212,117 @@ describe("simulate", () => {
         },
         mkBattery("b2")
       ]
-    };
+    );
 
     const result = simulate(config);
 
     expect((result.perProducerDailyKwh.b2 ?? 0) > 0).toBe(true);
     expect((result.perProducerDailyKwh.b2 ?? 0) <= 2).toBe(true);
+  });
+
+  it("reports monthly savings from producers separately from monthly cost", () => {
+    const config = configWith(
+      [mkAppliance("base", { kind: "always_on", watts: 300 })],
+      [
+        {
+          id: "solar",
+          name: "Solar",
+          enabled: true,
+          quantity: 1,
+          icon: "solar-panel",
+          model: { kind: "solar_curve", peakKw: 0.8, startMin: 8 * 60, endMin: 17 * 60 }
+        }
+      ],
+      { kind: "flat", currency: "USD", ratePerKwh: 0.22, sellBackRatePerKwh: 0.05 }
+    );
+
+    const result = simulate(config);
+    expect(result.totalMonthlySavings).toBeGreaterThan(0);
+    expect(result.totalMonthlySavings).not.toBeCloseTo(result.totalMonthlyCost, 8);
+  });
+
+  it("peak-shaving battery strategy reduces cost at high-rate windows", () => {
+    const tou: TariffModel = {
+      kind: "tou",
+      currency: "USD",
+      defaultRatePerKwh: 0.05,
+      windows: [
+        {
+          id: "peak",
+          startMin: 19 * 60,
+          endMin: 22 * 60,
+          ratePerKwh: 0.7,
+          dayTypes: ["weekday", "weekend"],
+          seasons: ["summer", "winter"]
+        }
+      ]
+    };
+
+    const appliances = [mkAppliance("base", { kind: "always_on", watts: 1200 })];
+    const solar: Producer = {
+      id: "solar",
+      name: "Solar",
+      enabled: true,
+      quantity: 1,
+      icon: "solar-panel",
+      model: {
+        kind: "solar_curve",
+        peakKw: 3.6,
+        startMin: 8 * 60,
+        endMin: 17 * 60
+      }
+    };
+
+    const selfResult = simulate(configWith(appliances, [solar, mkBattery("self", "self_consumption")], tou));
+    const peakResult = simulate(configWith(appliances, [solar, mkBattery("peak", "peak_shaving")], tou));
+
+    expect(peakResult.totalDailyCost).toBeLessThan(selfResult.totalDailyCost);
+  });
+
+  it("compareSimulation returns consistent deltas", () => {
+    const baseline = simulate(configWith([mkAppliance("base", { kind: "always_on", watts: 200 })], []));
+    const current = simulate(configWith([mkAppliance("base", { kind: "always_on", watts: 100 })], []));
+
+    const delta = compareSimulation(current, baseline);
+    approx(delta.dailyKwhDelta, current.totalDailyKwh - baseline.totalDailyKwh);
+    approx(delta.monthlyCostDelta, current.totalMonthlyCost - baseline.totalMonthlyCost);
+  });
+
+  it("suggestions keep shifted starts within allowed window", () => {
+    const tou: TariffModel = {
+      kind: "tou",
+      currency: "USD",
+      defaultRatePerKwh: 0.1,
+      windows: [
+        {
+          id: "peak-evening",
+          startMin: 18 * 60,
+          endMin: 22 * 60,
+          ratePerKwh: 0.35,
+          dayTypes: ["weekday", "weekend"],
+          seasons: ["summer", "winter"]
+        }
+      ]
+    };
+
+    const config = configWith(
+      [
+        mkAppliance("washer", {
+          kind: "daily_duration",
+          watts: 1200,
+          minutesPerDay: 120,
+          window: { startMin: 8 * 60, endMin: 22 * 60 }
+        })
+      ],
+      [],
+      tou
+    );
+
+    const result = simulate(config);
+    for (const action of result.savingsActions ?? []) {
+      expect(action.toStartMin).toBeGreaterThanOrEqual(8 * 60);
+      expect(action.toStartMin).toBeLessThanOrEqual(22 * 60);
+      expect(action.estimatedDailySavings).toBeGreaterThan(0);
+    }
   });
 });

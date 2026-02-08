@@ -28,7 +28,8 @@ export const producerPresets: ProducerPreset[] = [
       capacityKwh: 2.5,
       maxOutputKw: 0.6,
       startMin: 18 * 60,
-      endMin: 24 * 60
+      endMin: 24 * 60,
+      strategy: "self_consumption"
     }
   },
   {

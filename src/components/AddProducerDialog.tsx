@@ -5,11 +5,12 @@ import { ApplianceIcon } from "./ApplianceIcon";
 interface AddProducerDialogProps {
   open: boolean;
   onClose: () => void;
-  onAddSelection: (presetIds: string[]) => void;
+  onAddSelection: (presetIds: string[], includeCustom: boolean) => void;
 }
 
 export function AddProducerDialog({ open, onClose, onAddSelection }: AddProducerDialogProps) {
   const [selectedPresetIds, setSelectedPresetIds] = useState<string[]>([]);
+  const [isCustomSelected, setCustomSelected] = useState(false);
 
   if (!open) return null;
 
@@ -21,8 +22,11 @@ export function AddProducerDialog({ open, onClose, onAddSelection }: AddProducer
 
   const closeAndReset = () => {
     setSelectedPresetIds([]);
+    setCustomSelected(false);
     onClose();
   };
+
+  const hasSelection = selectedPresetIds.length > 0 || isCustomSelected;
 
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" onClick={closeAndReset}>
@@ -30,7 +34,7 @@ export function AddProducerDialog({ open, onClose, onAddSelection }: AddProducer
         <div className="template-picker-header">
           <div>
             <h2>Add Producer</h2>
-            <p>Select one or more producers to add.</p>
+            <p>Select one or more producers, then click Add Producers.</p>
           </div>
           <button type="button" onClick={closeAndReset}>
             Close
@@ -54,6 +58,17 @@ export function AddProducerDialog({ open, onClose, onAddSelection }: AddProducer
               </button>
             );
           })}
+
+          <button
+            type="button"
+            className={`preset-item ${isCustomSelected ? "selected" : ""}`}
+            onClick={() => setCustomSelected((current) => !current)}
+          >
+            <span className="preset-item-main">
+              <ApplianceIcon icon="producer-custom" />
+              <span>Custom Producer</span>
+            </span>
+          </button>
         </div>
 
         <div className="modal-actions">
@@ -63,9 +78,9 @@ export function AddProducerDialog({ open, onClose, onAddSelection }: AddProducer
           <button
             type="button"
             className="add-custom-btn"
-            disabled={selectedPresetIds.length === 0}
+            disabled={!hasSelection}
             onClick={() => {
-              onAddSelection(selectedPresetIds);
+              onAddSelection(selectedPresetIds, isCustomSelected);
               closeAndReset();
             }}
           >
